@@ -1,0 +1,32 @@
+Hamster is the easiest way to track time on my computer, but at work we use Harvest to report time.  What I have been doing is, each week, going through my Hamster activities and transcribing them by hand into harvest.  This is a waste of time, especially since Harvest has an HTTP API.  So, I am embarking on the journey of writing a script, and eventually a Hamster extension, that will sync between the tools.
+
+Specifically, and minimally, what I want is the following:
+- Harvest has projects, and each project has tasks.  These are predefined and not easily editable.  So I want to import the projects and Hamster categories, and pre-enter the activities in the categories based on the project tasks.
+- I want to be able to run a script to upload my Hamster activities from a given day into Harvest tasks.
+- Simple conflict resolution, by comparing start/end times.
+- Error on unresolvable conflicts (i.e., different tasks at the same time)
+
+So, I started by trying to use the Harvest Python API that's on Github.  I think it was for the wrong API though; I just want the Time Tracking API.  So, instead, I scrapped that, downloaded requests (which is a wonderful library for HTTP in Python), and went at it.
+
+The Harvest time tracking API is simple enough.  HTTP(S) authentication, and just a few endpoints that I would be concerned about.  I'm pulling everything down in JSON, so it gives me a list of project dictionaries.  Each one in turn has a list of task dictionaries.
+
+  'projects': [
+    {
+      'id': ...,
+      'name': ...,
+      'code': ...,
+      'client': ...,
+
+      'tasks': [
+        {
+          'id': ...,
+          'name': ...,
+          'billable': ...
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+
+Now that I have the data I need for the first step, I need to put it into my Hamster database.
