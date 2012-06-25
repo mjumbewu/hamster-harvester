@@ -1,0 +1,2 @@
+HARVEST_HOST = '<your_organization>.harvestapp.com'
+HARVEST_AUTH = ('<email_or_username>', '<password>')

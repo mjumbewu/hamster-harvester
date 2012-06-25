@@ -1,3 +1,5 @@
+13 Jun
+------
 Hamster is the easiest way to track time on my computer, but at work we use Harvest to report time.  What I have been doing is, each week, going through my Hamster activities and transcribing them by hand into harvest.  This is a waste of time, especially since Harvest has an HTTP API.  So, I am embarking on the journey of writing a script, and eventually a Hamster extension, that will sync between the tools.
 
 Specifically, and minimally, what I want is the following:
@@ -30,3 +32,67 @@ The Harvest time tracking API is simple enough.  HTTP(S) authentication, and jus
   ]
 
 Now that I have the data I need for the first step, I need to put it into my Hamster database.
+
+15 Jun
+------
+And I think this is going to be the more difficult part.
+
+I used to dig around in the internals of Hamster (fixed a few bugs at one point, and made my own status tray menu).  But I haven't in quite a while.  I know that the storage component has been moved into a service and that the various interfaces are communicating with it over DBus (it's awesome that that's possible), but I don't really know much about how DBus works.  Now to learn!
+
+I'm starting by trying to figure out how the hamster-time-tracker main UI interacts with the hamster-service.  I know by looking in the hamster.ui file that there are a few labels prefixed with last_activity, and that the stuff that populates these labels comes from storage.  So let's see where we can find this happening in the hamster-time-tracker module.
+
+I see in ProjectHamster.load_day, there is the snippet:
+
+    if facts and facts[-1].end_time == None:
+        self.last_activity = facts[-1]
+    else:
+        self.last_activity = None
+
+``facts`` in this case comes from ``runtime.storage.get_todays_facts()``.  Tracing objects, I eventually end up in hamster.client.Storage where all the DBus-y stuff happens, at least on the consumer side.  The entire range of methods available to me through ``runtime.storage.conn`` is listed in ``hamster.storage.Storage``.
+
+So what's all this stuff?
+
+    import datetime as dt
+    import time
+
+    start = time.mktime(dt.date(1,1,1).timetuple())
+    end = time.mktime(dt.date.today().timetuple())
+    term = ''
+    runtime.storage.conn.GetFacts(start, end, term)
+
+Seems like facts are the actual tracked time objects.  Fine.  That'll come in handy eventually, but right now I'm trying to figure out how to add categories and activities and tags.  Categories seems easy enough.  There's:
+
+    runtime.storage.conn.GetCategories()
+
+And now I'm starting to understand the DBus signature format.  Before each of these functions, there's a decorator.  For example:
+
+    @dbus.service.method("org.gnome.Hamster", in_signature='s', out_signature = 'i')
+    def AddCategory(self, name):
+        res = self.__add_category(name)
+        self.ActivitiesChanged()
+        return res
+
+This tells DBus to expect a string (s) in and and integer (i) out.  There's also unsigned (u), arrays (for example, a(is)), dictionaries (such as a{si} -- strings to integers), and others including a generic value (v).
+
+17 Jun
+------
+Reflecting further, I think that the mapping between Harvest and Hamster should be:
+
+    <Project> -- <Task> ==> <Activity>
+    Harvest ==> <Project>
+
+So, all of my Harvest-related tracking will be entered as, for example:
+
+    A General Job for CivicWorks -- Friday Projects@Harvest
+
+It's long winded, but autocomplete should get me there.
+
+This seems better than ``Friday Projects@A General Job for CivicWorks`` because of how autocomplete works in Hamster.  I'd basically have to memorize all of the differrent activities.  And that's not happening.  The other possibility is give all the Harvest tasks a common prefix -- for example:
+
+    Harvest -- Friday Projects@A General Job for CivicWorks
+
+That one's nice because it doesn't require me to remember anything but Harvest.  Makes discovery easy too.
+
+18 Jun
+------
+After wrestling with DBus for a while, I have something that will pull down the
