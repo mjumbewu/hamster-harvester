@@ -1,6 +1,14 @@
 Hamster-Harvester
 =================
 
+Hamster Harvester uses the Hamster python library, installed with the Hamster time 
+tracker application.  If you will use a virtual environment, remember to allow it
+access your system packages::
+
+    virtualenv env --system-site-packages
+    source env/bin/activate
+    pip install -r requirements.txt
+
 Set up
 ------
 Copy the ``settings.py.template`` file to ``settings.py`` and fill it in with your

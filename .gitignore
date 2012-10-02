@@ -2,3 +2,4 @@ env/
 build/
 *~
 *.py[co]
+src/settings.py
