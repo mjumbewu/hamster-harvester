@@ -17,6 +17,7 @@ def get_or_create_activity(activity_name, category_id, activities=[]):
     hamster_api = hamster.configuration.runtime.storage.conn
 
     activity_id = None
+    created = False
     for aid, aname, cid, cname in activities:
         if aname == activity_name:
             activity_id = aid
@@ -24,8 +25,9 @@ def get_or_create_activity(activity_name, category_id, activities=[]):
 
     if activity_id is None:
         activity_id = hamster_api.AddActivity(activity_name, category_id)
+        created = True
 
-    return activity_id
+    return activity_id, created
 
 def download_harvest_project_names(hostname, auth):
     session_info = harvest.API.make_session_info(hostname=hostname, auth=auth)
@@ -33,20 +35,40 @@ def download_harvest_project_names(hostname, auth):
     hamster_api = hamster.configuration.runtime.storage.conn
 
     projects = harvest_api.projects()
-    new_category_names = ['Harvest']
-    new_activity_names = defaultdict(list)
+    harvest_activity_names = set()
     for p in projects:
-        new_activity_names['Harvest'].extend([p['name'] + ' -- ' + t['name'] for t in p['tasks']])
+        harvest_activity_names.update([p['name'] + ' -- ' + t['name'] for t in p['tasks']])
 
     categories = hamster_api.GetCategories()
-    for category_name in new_category_names:
-        category_id = get_or_create_category(category_name, categories)
-        activities = hamster_api.GetCategoryActivities(category_id)
-        print '  {} ({})'.format(category_id, category_name)
+    harvest_category_id = get_or_create_category('Harvest', categories)
+    deprecated_category_id = get_or_create_category('Harvest - Deprecated', categories)
+    activities = hamster_api.GetCategoryActivities(harvest_category_id)
 
-        for activity_name in new_activity_names[category_name]:
-            activity_id = get_or_create_activity(activity_name, category_id, activities)
-            print '  {} ({})'.format(activity_id, activity_name)
+    deprecated_activities = set()
+    new_activities = set()
+
+    for aid, aname, cid, cname in activities:
+        if aname not in harvest_activity_names:
+            hamster_api.UpdateActivity(aid, '-' + aname, deprecated_category_id)
+            deprecated_activities.add((aid, '-' + aname))
+
+    for activity_name in harvest_activity_names:
+        activity_id, created = get_or_create_activity(activity_name, harvest_category_id, activities)
+        if created:
+            new_activities.add((activity_id, activity_name))
+
+    if deprecated_activities:
+        print "Deprecated Activities:"
+        for activity_id, activity_name in sorted(deprecated_activities):
+            print "  %s (%s)" % (activity_id, activity_name)
+
+    if new_activities:
+        print "New Activities:"
+        for activity_id, activity_name in sorted(new_activities):
+            print "  %s (%s)" % (activity_id, activity_name)
+
+    if not (new_activities or deprecated_activities):
+        print "No Changes"
 
 def upload_hamster_facts(hostname, auth, start_date=None, end_date=None):
     session_info = harvest.API.make_session_info(hostname=hostname, auth=auth)
