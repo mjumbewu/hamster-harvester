@@ -87,8 +87,8 @@ def upload_hamster_facts(hostname, auth, start_date=None, end_date=None):
         print 'Date ', cur_date
 
         start_timestamp = to_timestamp(cur_date)
-        end_timestamp = to_timestamp(cur_date + timedelta(hours=23, 
-                                                          minutes=59, 
+        end_timestamp = to_timestamp(cur_date + timedelta(hours=23,
+                                                          minutes=59,
                                                           seconds=59))
 
         facts = hamster_api.GetFacts(start_timestamp, end_timestamp, '')
@@ -98,13 +98,13 @@ def upload_hamster_facts(hostname, auth, start_date=None, end_date=None):
 
         new_entries = []
         print 'Hamster Facts'
-        for (fact_id, start, end, description, activity_name, 
+        for (fact_id, start, end, description, activity_name,
              activity_id, category_name, tags, ondate, delta) in facts:
 
             if category_name.lower() == 'harvest':
                 start_time = datetime(*time.gmtime(start)[:7])
                 end_time = datetime(*time.gmtime(end)[:7])
-                
+
                 print '{} - {}: {}'.format(
                     start_time.strftime('%I:%M%p').lower(),
                     end_time.strftime('%I:%M%p').lower(),
@@ -121,22 +121,22 @@ def upload_hamster_facts(hostname, auth, start_date=None, end_date=None):
                                 task_id = task['id']
                                 break
                         break
-                
+
                 if project_id is None or task_id is None:
                     print 'None for project_id or task_id'
                     import pdb; pdb.set_trace()
                     continue
 
                 new_entries.append(
-                    dict(started_at=start_time, 
-                         ended_at=end_time, 
-                         spent_at=date(*time.gmtime(ondate)[:3]), 
+                    dict(started_at=start_time,
+                         ended_at=end_time,
+                         spent_at=date(*time.gmtime(ondate)[:3]),
                          notes=description,
                          project_id=project_id, task_id=task_id))
-        
+
         cur_date += timedelta(days=1)
         print
-        
+
 
         # Don't upload any entries until you're sure they're all ok.
         for entry in new_entries:
