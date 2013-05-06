@@ -15,9 +15,13 @@ class API (object):
 
     @classmethod
     def make_session_info(cls, hostname='', auth=(), headers={}):
+        session = requests.Session()
+        session.auth = auth or cls.DEFAULT_AUTH
+        session.headers.update(headers or cls.DEFAULT_HEADERS)
+        
         return (
             hostname or cls.DEFAULT_HOST,
-            requests.session(headers=headers or cls.DEFAULT_HEADERS, auth=auth or cls.DEFAULT_AUTH)
+            session,
         )
 
     def get(self, path):
