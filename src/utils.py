@@ -79,8 +79,21 @@ def upload_hamster_facts(hostname, auth, start_date=None, end_date=None):
 
     from datetime import date, datetime, timedelta
     import time
+
     def to_timestamp(dt):
         return time.mktime(dt.timetuple()) if dt is not None else 0
+
+
+    def round_time(tm, round_minutes):
+        discard = timedelta(minutes=tm.minute % round_minutes,
+                            seconds=tm.second,
+                            microseconds=tm.microsecond)
+        tm -= discard
+        if discard >= timedelta(minutes=round_minutes/2):
+            tm += timedelta(minutes=round_minutes)
+
+        return tm
+
 
     cur_date = start_date
     while cur_date <= end_date:
@@ -102,8 +115,13 @@ def upload_hamster_facts(hostname, auth, start_date=None, end_date=None):
              activity_id, category_name, tags, ondate, delta) in facts:
 
             if category_name.lower() == 'harvest':
-                start_time = datetime(*time.gmtime(start)[:7])
-                end_time = datetime(*time.gmtime(end)[:7])
+                resolution = 15
+                start_time = round_time(datetime(*time.gmtime(start)[:7]), 15)
+                end_time = round_time(datetime(*time.gmtime(end)[:7]), 15)
+
+                # Discard 0 times
+                if start_time >= end_time:
+                    continue
 
                 print '{} - {}: {}'.format(
                     start_time.strftime('%I:%M%p').lower(),
